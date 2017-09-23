@@ -20,9 +20,14 @@ namespace CoursesAPI.Services.Models.Entities
 		public string CourseID    { get; set; }
 
 		/// <summary>
-		/// The name of the course. Example: "Vefþjónustur".
+		/// The name of the course in Icelandic. Example: "Vefþjónustur".
 		/// </summary>
-		public string Name        { get; set; }
+		public string NameIS        { get; set; }
+
+		/// <summary>
+		/// The name of the course in English. Example: "Vefþjónustur".
+		/// </summary>
+		public string NameEN        { get; set; }
 
 		/// <summary>
 		/// A short description of the course.

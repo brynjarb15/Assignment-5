@@ -34,3 +34,4 @@ msbuild.wrn
 CoursesApi/Repositories/CoursesApi.db
 Repositories/CoursesApi.db
 *.zip
+*.db

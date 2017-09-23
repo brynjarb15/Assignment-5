@@ -99,7 +99,7 @@ namespace CoursesAPI.Services.CoursesServices
 						   where c.SemesterID == semester
 						   select new CourseInstanceDTO
 						   {
-							   NameIS = ct.Name,
+							   Name = ct.NameIS,
 							   TemplateID = ct.CourseID,
 							   CourseInstanceID = c.ID,
 							   MainTeacher = (from t in _persons.All()

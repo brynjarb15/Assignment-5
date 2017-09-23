@@ -19,12 +19,19 @@ namespace WebApplication.Controllers
 			_service = new CoursesServiceProvider(uow);
 		}
 
+		/// <summary>
+		/// Returns list of all courses for the given semester
+		/// </summary>
+		/// <param name="semester"></param>
+		/// <returns></returns>
 		[HttpGet]
+		[Route("")]
 		public IActionResult GetCoursesBySemester(string semester = null)
 		{
+			var languageHeader = Request.Headers["Accept-Language"];
 			// TODO: figure out the requested language (if any!)
 			// and pass it to the service provider!
-			return Ok(_service.GetCourseInstancesBySemester(semester));
+			return Ok(_service.GetCourseInstancesBySemester(semester, languageHeader));
 		}
 
 		/// <summary>

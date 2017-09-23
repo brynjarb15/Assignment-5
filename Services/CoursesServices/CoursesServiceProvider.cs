@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CoursesAPI.Models;
@@ -15,6 +16,70 @@ namespace CoursesAPI.Services.CoursesServices
 		private readonly IRepository<TeacherRegistration> _teacherRegistrations;
 		private readonly IRepository<CourseTemplate> _courseTemplates;
 		private readonly IRepository<Person> _persons;
+
+		private readonly string ICELANDIC = "IS";
+		private readonly string ENGLISH = "EN";
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="languageHeader">The header to parse. Example: "en-US, en; q=0.8, is; q=0.6"</param>
+		/// <returns></returns>
+		private string parseLanguage(string languageHeader)
+		{
+			// If head is null then we use Icelandic
+			if (languageHeader == null)
+			{
+				return ICELANDIC;
+			}
+			// Remove all white space and split string upp on ;
+			languageHeader = languageHeader.Replace(" ", "");
+			char[] semi = { ';' };
+			string[] list = languageHeader.Split(semi);
+
+			// Make sorted list to sort langues after the q values
+			SortedList<string, string> languagesSorted = new SortedList<string, string>();
+
+			for (int i = 0; i < list.Length; i++)
+			{
+				var language = "";
+				var q = "";
+				if (list[i].StartsWith("q"))
+				{
+					// Get the language code if there is one
+					if (list[i].Contains(","))
+					{
+						language = list[i].Split(',')[1];
+						list[i] = list[i].Split(',')[0];
+					}
+					// Get the nubmer value of the q
+					if (list[i].Contains("="))
+					{
+						q = list[i].Split('=')[1];
+					}
+					// q is put in as key and the language is put in as value
+					languagesSorted.Add(q, language);
+				}
+			}
+			// The sorted list is checked in reverse order because the lowest value of q is first
+			for (int i = languagesSorted.Count - 1; i >= 0; i--)
+			{
+				// If the value is IS we return Icelandic
+				if (languagesSorted.ElementAt(i).Value.ToUpper() == "IS")
+				{
+					return ICELANDIC;
+
+				}
+				// If the value is EN we return English
+				else if (languagesSorted.ElementAt(i).Value.ToUpper() == "EN")
+				{
+					return ENGLISH;
+				}
+			}
+
+			// If we did not find English or Icelandic before then we return Icelandic as default
+			return ICELANDIC;
+		}
 
 		public CoursesServiceProvider(IUnitOfWork uow)
 		{
@@ -54,9 +119,10 @@ namespace CoursesAPI.Services.CoursesServices
 			}
 			var isTeacherInCourse = (from t in _teacherRegistrations.All()
 									 where t.SSN == newTeacher.SSN &&
-									 	   t.CourseInstanceID == courseInstanceID
-									select t).SingleOrDefault();
-			if (isTeacherInCourse != null){
+											t.CourseInstanceID == courseInstanceID
+									 select t).SingleOrDefault();
+			if (isTeacherInCourse != null)
+			{
 				throw new AppValidationException("The teacher is already registered to this course");
 			}
 			var isThereAMainTeacher = (from t in _teacherRegistrations.All()
@@ -87,12 +153,17 @@ namespace CoursesAPI.Services.CoursesServices
 		/// </summary>
 		/// <param name="semester"></param>
 		/// <returns></returns>
-		public List<CourseInstanceDTO> GetCourseInstancesBySemester(string semester = null)
+		public List<CourseInstanceDTO> GetCourseInstancesBySemester(string semester = null, string languageHeader = null)
 		{
+			string language;
 			if (string.IsNullOrEmpty(semester))
 			{
 				semester = "20153";
 			}
+			language = parseLanguage(languageHeader);
+
+			Console.WriteLine(language);
+
 
 			var courses = (from c in _courseInstances.All()
 						   join ct in _courseTemplates.All() on c.CourseID equals ct.CourseID
@@ -103,12 +174,12 @@ namespace CoursesAPI.Services.CoursesServices
 							   TemplateID = ct.CourseID,
 							   CourseInstanceID = c.ID,
 							   MainTeacher = (from t in _persons.All()
-										  join tr in _teacherRegistrations.All() on t.SSN equals tr.SSN
-										  where tr.CourseInstanceID == c.ID &&
-												tr.Type == TeacherType.MainTeacher
-										  select t.Name).SingleOrDefault()
+											  join tr in _teacherRegistrations.All() on t.SSN equals tr.SSN
+											  where tr.CourseInstanceID == c.ID &&
+													tr.Type == TeacherType.MainTeacher
+											  select t.Name).SingleOrDefault()
 						   }).ToList();
-			foreach(var c in courses)
+			foreach (var c in courses)
 			{
 				if (c.MainTeacher == null)
 				{

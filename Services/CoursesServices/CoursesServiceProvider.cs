@@ -162,15 +162,13 @@ namespace CoursesAPI.Services.CoursesServices
 			}
 			language = parseLanguage(languageHeader);
 
-			Console.WriteLine(language);
-
-
 			var courses = (from c in _courseInstances.All()
 						   join ct in _courseTemplates.All() on c.CourseID equals ct.CourseID
 						   where c.SemesterID == semester
 						   select new CourseInstanceDTO
 						   {
-							   Name = ct.NameIS,
+							   // Check if language is English then get the english name else the Icelandic name for the course
+							   Name = (language == ENGLISH ? ct.NameEN: ct.NameIS),
 							   TemplateID = ct.CourseID,
 							   CourseInstanceID = c.ID,
 							   MainTeacher = (from t in _persons.All()

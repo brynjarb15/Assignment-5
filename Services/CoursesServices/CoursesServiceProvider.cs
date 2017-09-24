@@ -21,7 +21,7 @@ namespace CoursesAPI.Services.CoursesServices
 		private readonly string ENGLISH = "EN";
 
 		/// <summary>
-		/// 
+		/// This takes in Accept-Language header and decides if the api should use Icelandic or English
 		/// </summary>
 		/// <param name="languageHeader">The header to parse. Example: "en-US, en; q=0.8, is; q=0.6"</param>
 		/// <returns></returns>
@@ -65,7 +65,7 @@ namespace CoursesAPI.Services.CoursesServices
 			for (int i = languagesSorted.Count - 1; i >= 0; i--)
 			{
 				// If the value is IS we return Icelandic
-				if (languagesSorted.ElementAt(i).Value.ToUpper() == "IS")
+				if (languagesSorted.ElementAt(i).Value.ToUpper() == "IS" || languagesSorted.ElementAt(i).Value.ToUpper() == "*")
 				{
 					return ICELANDIC;
 
@@ -79,6 +79,23 @@ namespace CoursesAPI.Services.CoursesServices
 
 			// If we did not find English or Icelandic before then we return Icelandic as default
 			return ICELANDIC;
+		}
+
+		/// <summary>
+		/// Changes the input string to "" if the string is null else returns the string unchanged
+		/// </summary>
+		/// <param name="t">string to change if null</param>
+		/// <returns>empty string or unchanged string</returns>
+		private string changeNullToEmptyString(string t)
+		{
+			if (t == null)
+			{
+				return "";
+			}
+			else
+			{
+				return t;
+			}
 		}
 
 		public CoursesServiceProvider(IUnitOfWork uow)
@@ -147,13 +164,13 @@ namespace CoursesAPI.Services.CoursesServices
 		}
 
 		/// <summary>
-		/// You should write tests for this function. You will also need to
-		/// modify it, such that it will correctly return the name of the main
-		/// teacher of each course.
+		/// Returns envelope where the Items are 10 courses or less(if it is the lase page) of the given pageNumber
 		/// </summary>
-		/// <param name="semester"></param>
-		/// <returns></returns>
-		public List<CourseInstanceDTO> GetCourseInstancesBySemester(string semester = null, string languageHeader = null)
+		/// <param name="pageNumber">The number of page the courses will be gotten from</param>
+		/// <param name="semester">The semester the courses will be on</param>
+		/// <param name="languageHeader">The string that will determine if there will be used English or Icelandic</param>
+		/// <returns>Envelope of courses</returns>
+		public Envelope<CourseInstanceDTO> GetCourseInstancesBySemester(int pageNumber, string semester = null, string languageHeader = null)
 		{
 			string language;
 			if (string.IsNullOrEmpty(semester))
@@ -161,6 +178,12 @@ namespace CoursesAPI.Services.CoursesServices
 				semester = "20153";
 			}
 			language = parseLanguage(languageHeader);
+
+			var pageSize = 10;
+			var numberOfCourses = (double)(from c in _courseInstances.All()
+							  where c.SemesterID == semester
+							  select c).Count();
+			var maxPages = (int)Math.Ceiling(numberOfCourses / (double) pageSize);
 
 			var courses = (from c in _courseInstances.All()
 						   join ct in _courseTemplates.All() on c.CourseID equals ct.CourseID
@@ -171,20 +194,23 @@ namespace CoursesAPI.Services.CoursesServices
 							   Name = (language == ENGLISH ? ct.NameEN: ct.NameIS),
 							   TemplateID = ct.CourseID,
 							   CourseInstanceID = c.ID,
-							   MainTeacher = (from t in _persons.All()
+							   // Gets the name of the mainTeacher if there is one and if there isn't one then the changeNullToEmptyString
+							   // function will make sure that the name is "" and not null
+							   MainTeacher = changeNullToEmptyString((from t in _persons.All()
 											  join tr in _teacherRegistrations.All() on t.SSN equals tr.SSN
 											  where tr.CourseInstanceID == c.ID &&
 													tr.Type == TeacherType.MainTeacher
-											  select t.Name).SingleOrDefault()
-						   }).ToList();
-			foreach (var c in courses)
+											  select t).SingleOrDefault().Name)
+						   }).OrderBy(x => x.Name).Skip((pageNumber -1) * pageSize).Take(pageSize).ToList();
+
+			
+			return new Envelope<CourseInstanceDTO>
 			{
-				if (c.MainTeacher == null)
-				{
-					c.MainTeacher = "";
-				}
-			}
-			return courses;
+				Items = courses,
+				TotalPages = maxPages,
+				PageSize = pageSize,
+				CurrentPage = pageNumber
+			};
 		}
 	}
 }

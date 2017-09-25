@@ -169,8 +169,9 @@ namespace CoursesAPI.Services.CoursesServices
 		/// <param name="pageNumber">The number of page the courses will be gotten from</param>
 		/// <param name="semester">The semester the courses will be on</param>
 		/// <param name="languageHeader">The string that will determine if there will be used English or Icelandic</param>
+		/// /// <param name="pageSi">The size of the page that will be returned</param>
 		/// <returns>Envelope of courses</returns>
-		public Envelope<CourseInstanceDTO> GetCourseInstancesBySemester(int pageNumber, string semester = null, string languageHeader = null)
+		public Envelope<CourseInstanceDTO> GetCourseInstancesBySemester(int pageNumber, int pageSi, string semester = null, string languageHeader = null)
 		{
 			string language;
 			if (string.IsNullOrEmpty(semester))
@@ -179,7 +180,7 @@ namespace CoursesAPI.Services.CoursesServices
 			}
 			language = parseLanguage(languageHeader);
 
-			var pageSize = 10;
+			var pageSize = pageSi;
 			var numberOfCourses = (double)(from c in _courseInstances.All()
 							  where c.SemesterID == semester
 							  select c).Count();
@@ -200,7 +201,7 @@ namespace CoursesAPI.Services.CoursesServices
 											  join tr in _teacherRegistrations.All() on t.SSN equals tr.SSN
 											  where tr.CourseInstanceID == c.ID &&
 													tr.Type == TeacherType.MainTeacher
-											  select t).SingleOrDefault().Name)
+											  select t).FirstOrDefault().Name)
 						   }).OrderBy(x => x.Name).Skip((pageNumber -1) * pageSize).Take(pageSize).ToList();
 
 			
